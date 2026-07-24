@@ -6,11 +6,10 @@ const PROTECTED = ['/dashboard', '/optimizer', '/transfers', '/leagues', '/analy
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Only run auth check on protected routes
+  // Only run on protected routes
   const isProtected = PROTECTED.some((p) => pathname.startsWith(p))
   if (!isProtected) return NextResponse.next({ request })
 
-  // Skip if Supabase isn't configured
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http')) {
     return NextResponse.next({ request })
   }
@@ -36,9 +35,10 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Use getSession() — reads from cookie, no network call, fast on Edge
+  const { data: { session } } = await supabase.auth.getSession()
 
-  if (!user) {
+  if (!session) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
