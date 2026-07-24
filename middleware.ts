@@ -1,8 +1,16 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const PROTECTED = ['/dashboard', '/optimizer', '/transfers', '/leagues', '/analysis']
+
 export async function middleware(request: NextRequest) {
-  // Skip auth when Supabase isn't configured yet
+  const { pathname } = request.nextUrl
+
+  // Only run auth check on protected routes
+  const isProtected = PROTECTED.some((p) => pathname.startsWith(p))
+  if (!isProtected) return NextResponse.next({ request })
+
+  // Skip if Supabase isn't configured
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith('http')) {
     return NextResponse.next({ request })
   }
@@ -30,15 +38,7 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { pathname } = request.nextUrl
-  const isDashboardRoute =
-    pathname.startsWith('/dashboard') ||
-    pathname.startsWith('/optimizer') ||
-    pathname.startsWith('/transfers') ||
-    pathname.startsWith('/leagues') ||
-    pathname.startsWith('/analysis')
-
-  if (!user && isDashboardRoute) {
+  if (!user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
